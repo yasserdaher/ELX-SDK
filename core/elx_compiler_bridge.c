@@ -111,7 +111,9 @@ bool elx_sdk_compile_file(const char *input_path, const char *output_path,
 bool elx_sdk_run(const char *elbc_path, int *exit_code) {
     elx_runtime_t runtime;
     if (!elx_runtime_create(&runtime, elbc_path)) {
-        fprintf(stderr, "cannot load module: %s\n", elbc_path);
+        const char *err = elx_module_load_error();
+        fprintf(stderr, "cannot load module '%s': %s\n", elbc_path,
+                err ? err : "unknown error");
         return false;
     }
     int code = elx_runtime_run(&runtime, "main");

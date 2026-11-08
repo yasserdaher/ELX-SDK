@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 /* ELX Standard Library - Native implementations
  *
  * These functions are registered as native functions in the ELX runtime

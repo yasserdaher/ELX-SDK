@@ -1,7 +1,29 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include "elx_runtime.h"
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <stdlib.h>
+
+static char g_elx_module_load_error[512];
+
+const char *elx_module_load_error(void) {
+    return g_elx_module_load_error[0] ? g_elx_module_load_error : "unknown module load error";
+}
+
+static void set_load_error(const char *msg) {
+    if (!msg) msg = "unknown error";
+    snprintf(g_elx_module_load_error, sizeof(g_elx_module_load_error), "%s", msg);
+}
+
+/* Documented compatibility opt-in ONLY: by default checksum mismatches are
+ * rejected (safe). Set ELX_ELBC_ALLOW_BAD_CRC=1 to load despite mismatch. */
+static bool elbc_allow_bad_crc(void) {
+    const char *v = getenv("ELX_ELBC_ALLOW_BAD_CRC");
+    return v && v[0] == '1' && v[1] == '\0';
+}
 
 elx_reader_t *elx_reader_create(const uint8_t *data, size_t size) {
     elx_reader_t *reader = (elx_reader_t *)calloc(1U, sizeof(*reader));
@@ -28,7 +50,7 @@ bool elx_reader_read_u16(elx_reader_t *reader, uint16_t *out) {
     if (!reader || !out) return false;
     if (!elx_reader_read_u8(reader, &b0)) return false;
     if (!elx_reader_read_u8(reader, &b1)) return false;
-    *out = (uint16_t)(b0 | (b1 << 8U));
+    *out = (uint16_t)((uint16_t)b0 | ((uint16_t)b1 << 8U));
     return true;
 }
 
@@ -39,7 +61,7 @@ bool elx_reader_read_u32(elx_reader_t *reader, uint32_t *out) {
     if (!elx_reader_read_u8(reader, &b1)) return false;
     if (!elx_reader_read_u8(reader, &b2)) return false;
     if (!elx_reader_read_u8(reader, &b3)) return false;
-    *out = (uint32_t)(b0 | (b1 << 8U) | (b2 << 16U) | (b3 << 24U));
+    *out = (uint32_t)b0 | ((uint32_t)b1 << 8U) | ((uint32_t)b2 << 16U) | ((uint32_t)b3 << 24U);
     return true;
 }
 
@@ -122,14 +144,14 @@ static char *read_file(const char *path, size_t *out_size) {
 }
 
 bool elx_module_load(const char *path, elx_module_t *module) {
-    char *file_data;
+    void *file_data;
     size_t file_size;
     uint8_t magic[4];
     uint8_t version_major;
     uint8_t version_minor;
     uint16_t flags16;
     uint64_t timestamp;
-     uint32_t reserved;
+    uint32_t reserved;
     uint32_t function_count;
     uint32_t widget_count;
     uint32_t string_count;
@@ -140,52 +162,57 @@ bool elx_module_load(const char *path, elx_module_t *module) {
     uint32_t computed;
     size_t i;
     const uint8_t *code_data;
-    if (!path || !module) return false;
+    if (!path || !module) { set_load_error("invalid arguments"); return false; }
     memset(module, 0, sizeof(*module));
+    set_load_error("");
     file_data = read_file(path, &file_size);
-    if (!file_data) return false;
+    if (!file_data) { set_load_error("cannot read module file"); return false; }
     elx_reader_t *reader = elx_reader_create((const uint8_t *)file_data, file_size);
-    if (!reader) {
-        free(file_data);
-        return false;
-    }
+    if (!reader) { set_load_error("cannot create reader"); free(file_data); return false; }
     if (!elx_reader_read_bytes(reader, magic, 4U) ||
         memcmp(magic, "ELXB", 4U) != 0) {
+        set_load_error("invalid ELBC magic header");
         fprintf(stderr, "elx_runtime: invalid magic header\n");
         elx_reader_destroy(reader);
         free(file_data);
         return false;
     }
-    if (!elx_reader_read_u8(reader, &version_major)) {
-        fprintf(stderr, "elx_runtime: cannot read version major\n");
-        elx_reader_destroy(reader);
-        free(file_data);
-        return false;
-    }
-    if (!elx_reader_read_u8(reader, &version_minor)) {
-        fprintf(stderr, "elx_runtime: cannot read version minor\n");
+    if (!elx_reader_read_u8(reader, &version_major) ||
+        !elx_reader_read_u8(reader, &version_minor)) {
+        set_load_error("truncated ELBC version");
+        fprintf(stderr, "elx_runtime: cannot read version\n");
         elx_reader_destroy(reader);
         free(file_data);
         return false;
     }
     if (version_major != 3U || version_minor < 1U || version_minor > 2U) {
+        set_load_error("unsupported ELBC bytecode version");
         fprintf(stderr, "elx_runtime: unsupported bytecode version %u.%u\n", version_major, version_minor);
         elx_reader_destroy(reader);
         free(file_data);
         return false;
     }
-    if (!elx_reader_read_u16(reader, &flags16)) goto fail_read;
-    if (!elx_reader_read_u64(reader, &timestamp)) goto fail_read;
-    if (!elx_reader_read_u32(reader, &reserved)) goto fail_read;
-    (void)timestamp;
-    (void)reserved;
-    if (!elx_reader_read_u32(reader, &function_count)) goto fail_read;
-    if (!elx_reader_read_u32(reader, &widget_count)) goto fail_read;
-    if (!elx_reader_read_u32(reader, &string_count)) goto fail_read;
-    if (!elx_reader_read_u32(reader, &register_count)) goto fail_read;
+    if (!elx_reader_read_u16(reader, &flags16)) { set_load_error("truncated ELBC header (flags)"); goto fail_read; }
+    /* ELBC 3.x header @8 is u64: compiler historically wrote source_size;
+     * runtime historically read timestamp. Same field/offset — accept either
+     * semantic name without breaking 3.1/3.2. @16 is reserved(u32). */
+    if (!elx_reader_read_u64(reader, &timestamp)) { set_load_error("truncated ELBC header (source_size_or_timestamp)"); goto fail_read; }
+    if (!elx_reader_read_u32(reader, &reserved)) { set_load_error("truncated ELBC header (reserved)"); goto fail_read; }
+    (void)timestamp; (void)reserved;
+    if (!elx_reader_read_u32(reader, &function_count) ||
+        !elx_reader_read_u32(reader, &widget_count) ||
+        !elx_reader_read_u32(reader, &string_count) ||
+        !elx_reader_read_u32(reader, &register_count)) {
+        set_load_error("truncated ELBC header (counts)"); goto fail_read;
+    }
     if (version_minor >= 2U) {
-        if (!elx_reader_read_u32(reader, &import_count)) goto fail_read;
-        if (!elx_reader_read_u32(reader, &export_count)) goto fail_read;
+        if (!elx_reader_read_u32(reader, &import_count) ||
+            !elx_reader_read_u32(reader, &export_count)) {
+            set_load_error("truncated ELBC header (import/export counts)"); goto fail_read;
+        }
+    }
+    if (function_count > 1000000U || string_count > 1000000U || import_count > 100000U || export_count > 100000U) {
+        set_load_error("ELBC header counts exceed sanity limits"); goto fail_read;
     }
     module->version = (uint16_t)((version_major << 8U) | version_minor);
     module->flags = flags16;
@@ -193,27 +220,29 @@ bool elx_module_load(const char *path, elx_module_t *module) {
     module->widget_count = widget_count;
     module->string_count = string_count;
     module->register_count = register_count;
-    module->import_count = import_count;
-    module->export_count = export_count;
-    module->functions = (elx_function_t *)calloc(function_count, sizeof(elx_function_t));
-    if (!module->functions && function_count > 0U) goto fail_read;
+    module->import_count = 0U;
+    module->export_count = 0U;
+    module->functions = (elx_function_t *)calloc(function_count ? function_count : 1U, sizeof(elx_function_t));
+    if (!module->functions) { set_load_error("out of memory (functions)"); goto fail_read; }
     for (i = 0U; i < function_count; ++i) {
         char name[256];
         uint32_t arg_count;
         uint32_t start_slot;
         uint32_t code_size;
         elx_function_t *func = &module->functions[i];
-        if (!elx_reader_read_string(reader, name, sizeof(name))) goto fail_read;
+        if (!elx_reader_read_string(reader, name, sizeof(name))) { set_load_error("truncated function name"); goto fail_read; }
         func->name = (char *)malloc(strlen(name) + 1U);
-        if (func->name) strcpy(func->name, name);
-        if (!elx_reader_read_u32(reader, &arg_count)) goto fail_read;
-        if (!elx_reader_read_u32(reader, &start_slot)) goto fail_read;
+        if (!func->name) { set_load_error("out of memory (function name)"); goto fail_read; }
+        strcpy(func->name, name);
+        if (!elx_reader_read_u32(reader, &arg_count) ||
+            !elx_reader_read_u32(reader, &start_slot)) { set_load_error("truncated function metadata"); goto fail_read; }
         if (version_minor >= 2U) {
             uint8_t is_exported = 0U;
-            if (!elx_reader_read_u8(reader, &is_exported)) goto fail_read;
+            if (!elx_reader_read_u8(reader, &is_exported)) { set_load_error("truncated function export flag"); goto fail_read; }
             func->is_exported = is_exported != 0U;
         }
-        if (!elx_reader_read_u32(reader, &code_size)) goto fail_read;
+        if (!elx_reader_read_u32(reader, &code_size)) { set_load_error("truncated function code size"); goto fail_read; }
+        if (code_size > (uint32_t)(reader->size - reader->cursor)) { set_load_error("function code size exceeds file bounds"); goto fail_read; }
         func->arg_count = arg_count;
         func->start_slot = start_slot;
         func->code_size = code_size;
@@ -222,61 +251,82 @@ bool elx_module_load(const char *path, elx_module_t *module) {
     }
     if (import_count > 0U) {
         module->imports = (elx_import_t *)calloc(import_count, sizeof(elx_import_t));
-        if (!module->imports) goto fail_read;
+        if (!module->imports) { set_load_error("out of memory (imports)"); goto fail_read; }
         for (i = 0U; i < import_count; ++i) {
             char mod_name[256], imp_path[256], alias[256];
-            if (!elx_reader_read_string(reader, mod_name, sizeof(mod_name))) goto fail_read;
-            if (!elx_reader_read_string(reader, imp_path, sizeof(imp_path))) goto fail_read;
-            if (!elx_reader_read_string(reader, alias, sizeof(alias))) goto fail_read;
+            if (!elx_reader_read_string(reader, mod_name, sizeof(mod_name)) ||
+                !elx_reader_read_string(reader, imp_path, sizeof(imp_path)) ||
+                !elx_reader_read_string(reader, alias, sizeof(alias))) {
+                set_load_error("truncated import table"); goto fail_read;
+            }
             module->imports[i].module_name = strdup(mod_name);
             module->imports[i].import_path = strdup(imp_path);
             module->imports[i].alias = alias[0] ? strdup(alias) : NULL;
+            module->import_count = i + 1U;
         }
     }
     code_data = reader->data;
     {
-        uint32_t pool_count;
-        if (!elx_reader_read_u32(reader, &pool_count)) goto fail_read;
+        uint32_t pool_count = 0U;
+        if (!elx_reader_read_u32(reader, &pool_count)) { set_load_error("truncated string pool count"); goto fail_read; }
+        if (pool_count != string_count) {
+            fprintf(stderr, "elx_runtime: warning: string pool count (%u) != header (%u)\n", pool_count, string_count);
+        }
         (void)pool_count;
     }
     for (i = 0U; i < string_count; ++i) {
         char buffer[256];
-        if (!elx_reader_read_string(reader, buffer, sizeof(buffer))) goto fail_read;
+        if (!elx_reader_read_string(reader, buffer, sizeof(buffer))) { set_load_error("truncated string pool entry"); goto fail_read; }
         if (module->string_pool.count == module->string_pool.capacity) {
             size_t cap = module->string_pool.capacity ? module->string_pool.capacity * 2U : ELX_STRING_POOL_INIT;
             char **strings = (char **)realloc(module->string_pool.strings, cap * sizeof(*strings));
-            if (!strings) goto fail_read;
+            if (!strings) { set_load_error("out of memory (string pool)"); goto fail_read; }
             module->string_pool.strings = strings;
             module->string_pool.capacity = cap;
         }
         module->string_pool.strings[module->string_pool.count] = (char *)malloc(strlen(buffer) + 1U);
-        if (module->string_pool.strings[module->string_pool.count]) {
-            strcpy(module->string_pool.strings[module->string_pool.count], buffer);
-        }
+        if (!module->string_pool.strings[module->string_pool.count]) { set_load_error("out of memory (string)"); goto fail_read; }
+        strcpy(module->string_pool.strings[module->string_pool.count], buffer);
         ++module->string_pool.count;
     }
     if (export_count > 0U) {
         module->exports = (elx_export_t *)calloc(export_count, sizeof(elx_export_t));
-        if (!module->exports) goto fail_read;
+        if (!module->exports) { set_load_error("out of memory (exports)"); goto fail_read; }
         for (i = 0U; i < export_count; ++i) {
             char name[256];
             uint32_t func_index;
-            if (!elx_reader_read_string(reader, name, sizeof(name))) goto fail_read;
-            if (!elx_reader_read_u32(reader, &func_index)) goto fail_read;
+            if (!elx_reader_read_string(reader, name, sizeof(name)) ||
+                !elx_reader_read_u32(reader, &func_index)) {
+                set_load_error("truncated export table"); goto fail_read;
+            }
+            if (func_index >= function_count) {
+                set_load_error("export references invalid function index"); goto fail_read;
+            }
             module->exports[i].name = strdup(name);
             module->exports[i].function_index = func_index;
+            module->export_count = i + 1U;
         }
     }
     computed = crc32(code_data, reader->cursor);
-    if (!elx_reader_read_u32(reader, &checksum)) goto fail_read;
+    if (!elx_reader_read_u32(reader, &checksum)) { set_load_error("truncated checksum"); goto fail_read; }
     if (computed != checksum) {
         fprintf(stderr, "elx_runtime: checksum mismatch (stored: %08x, computed: %08x)\n", checksum, computed);
+        if (!elbc_allow_bad_crc()) {
+            set_load_error("ELBC checksum mismatch (set ELX_ELBC_ALLOW_BAD_CRC=1 only for documented compatibility)");
+            goto fail_read;
+        }
+        fprintf(stderr, "elx_runtime: warning: loading despite checksum mismatch (ELX_ELBC_ALLOW_BAD_CRC=1)\n");
     }
     module->code_start = 0U;
     module->data_size = file_size;
     module->data = (const uint8_t *)file_data;
-    module->string_pool.strings = (char **)realloc(module->string_pool.strings, (module->string_pool.count + 1) * sizeof(*module->string_pool.strings));
+    {
+        char **strings = (char **)realloc(module->string_pool.strings,
+                                          (module->string_pool.count + 1U) * sizeof(*strings));
+        if (strings) module->string_pool.strings = strings;
+    }
     elx_reader_destroy(reader);
+    set_load_error("");
     return true;
 fail_read:
     elx_reader_destroy(reader);
@@ -288,24 +338,26 @@ fail_read:
 void elx_module_destroy(elx_module_t *module) {
     size_t i;
     if (!module) return;
-    for (i = 0U; i < module->function_count; ++i) {
-        free(module->functions[i].name);
+    if (module->functions) {
+        for (i = 0U; i < module->function_count; ++i) free(module->functions[i].name);
+        free(module->functions);
     }
-    free(module->functions);
-    for (i = 0U; i < module->import_count; ++i) {
-        free(module->imports[i].module_name);
-        free(module->imports[i].import_path);
-        free(module->imports[i].alias);
+    if (module->imports) {
+        for (i = 0U; i < module->import_count; ++i) {
+            free(module->imports[i].module_name);
+            free(module->imports[i].import_path);
+            free(module->imports[i].alias);
+        }
+        free(module->imports);
     }
-    free(module->imports);
-    for (i = 0U; i < module->export_count; ++i) {
-        free(module->exports[i].name);
+    if (module->exports) {
+        for (i = 0U; i < module->export_count; ++i) free(module->exports[i].name);
+        free(module->exports);
     }
-    free(module->exports);
-    for (i = 0U; i < module->string_pool.count; ++i) {
-        free(module->string_pool.strings[i]);
+    if (module->string_pool.strings) {
+        for (i = 0U; i < module->string_pool.count; ++i) free(module->string_pool.strings[i]);
+        free(module->string_pool.strings);
     }
-    free(module->string_pool.strings);
     free((void *)module->data);
     memset(module, 0, sizeof(*module));
 }

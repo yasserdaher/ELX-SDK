@@ -3,7 +3,7 @@
 ## Project identity
 - **Name:** ELX — Programming Language & Developer SDK
 - **Publisher:** ELECTRON VISION (project identity; not claimed as a registered legal entity)
-- **Version:** 0.4.0-phase4 (`ELX_SDK_VERSION`, `include/elx_config.h`)
+- **Version:** 0.4.1-phase4 (`ELX_SDK_VERSION`, `include/elx_config.h`)
 - **Status:** EXPERIMENTAL / early developer preview
 - **Repository:** https://github.com/yasserdaher/ELX-SDK
 - **License:** VOLT 1.26 License Agreement — see [LICENSE](LICENSE), [LICENSE-ELX](LICENSE-ELX)

@@ -448,12 +448,12 @@ static void test_spec_freeze(void) {
     check(elx_freeze_registry_state(reg) == ELX_FREEZE_STATE_DRAFT, "freeze_draft");
     elx_freeze_registry_add_rule(reg, "import", "import X from Y", "resolve module", true, true);
     check(reg->rule_count == 1, "freeze_rule_added");
-    elx_freeze_registry_lock(reg, "0.4.0-phase4");
+    elx_freeze_registry_lock(reg, "0.4.1-phase4");
     check(elx_freeze_registry_is_locked(reg), "freeze_locked");
     check(elx_freeze_registry_state(reg) == ELX_FREEZE_STATE_FROZEN, "freeze_frozen");
-    check(strcmp(elx_freeze_current_version(reg), "0.4.0-phase4") == 0, "freeze_version_str");
+    check(strcmp(elx_freeze_current_version(reg), "0.4.1-phase4") == 0, "freeze_version_str");
     char error[256];
-    check(elx_freeze_validate_version("0.4.0-phase4", error, sizeof(error)), "freeze_version_valid");
+    check(elx_freeze_validate_version("0.4.1-phase4", error, sizeof(error)), "freeze_version_valid");
     check(!elx_freeze_validate_version("", error, sizeof(error)), "freeze_version_invalid");
     char changelog[ELX_FREEZE_MAX_CHANGELOG];
     check(elx_freeze_get_changelog(reg, changelog, sizeof(changelog)), "freeze_changelog");

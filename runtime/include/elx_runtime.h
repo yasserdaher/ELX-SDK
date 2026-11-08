@@ -205,6 +205,7 @@ bool elx_reader_read_bytes(elx_reader_t *reader, void *out, size_t count);
 bool elx_reader_read_string(elx_reader_t *reader, char *buffer, size_t max_len);
 
 bool elx_module_load(const char *path, elx_module_t *module);
+const char *elx_module_load_error(void);
 void elx_module_destroy(elx_module_t *module);
 elx_function_t *elx_module_find_function(const elx_module_t *module, const char *name);
 const elx_export_t *elx_module_find_export(const elx_module_t *module, const char *name);

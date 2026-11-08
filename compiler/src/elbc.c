@@ -791,11 +791,13 @@ static void emit_program(byte_buffer_t *buffer, elx_ast_t *program, elbc_context
         } else if (declaration->kind == ELX_AST_EXPORT && declaration->value &&
                    declaration->value->kind == ELX_AST_FUNCTION) {
             emit_function(buffer, declaration->value, ctx);
-        } else if (declaration->kind == ELX_AST_WIDGET) {
-            emit_widget(buffer, declaration, ctx);
-        } else if (declaration->kind == ELX_AST_STATE) {
-            emit_state_subscribe(buffer, declaration->name, ctx);
         }
+        /* Widget and state declarations are counted in the header (widget_count)
+         * but their opcode streams are not emitted into the module body. The
+         * runtime reader does not consume module-level widget/state instruction
+         * bytes; emitting them previously caused reader/writer misalignment
+         * (ELBC 3.2). Widget reconstruction requires a framed section in a
+         * future format revision. */
     }
     write_import_table(buffer, program, ctx);
     write_string_table(buffer, ctx);
@@ -887,8 +889,9 @@ bool elx_write_elbc(const elx_ast_t *program, const char *output_path, elx_diagn
     string_pool_init(&ctx.string_pool);
     buffer_init(&buffer);
     collect_strings(program, &ctx);
+    (void)count_widgets; /* AST widget count not serialized in ELBC 3.x module body */
     function_count = count_functions(program);
-    widget_count = count_widgets(program);
+    widget_count = 0U; /* serialized widget records in body (none in 3.x; header reflects actual content) */
     string_count = ctx.string_pool.count;
     import_count = count_imports(program);
     export_count = count_exports(program);
@@ -898,9 +901,9 @@ bool elx_write_elbc(const elx_ast_t *program, const char *output_path, elx_diagn
     buffer_u8(&buffer, 'B');
     buffer_u8(&buffer, 0x03U);
     buffer_u8(&buffer, 0x02U);
-    buffer_u16(&buffer, 0U);
-    buffer_u64(&buffer, 0U);
-    buffer_u32(&buffer, 0U);
+    buffer_u16(&buffer, 0U); /* flags */
+    buffer_u64(&buffer, 0U); /* source_size_or_timestamp (u64 @8): writer uses source_size; reader aliases timestamp — same layout, preserved for 3.1/3.2 */
+    buffer_u32(&buffer, 0U); /* reserved @16 */
     buffer_u32(&buffer, (uint32_t)function_count);
     buffer_u32(&buffer, (uint32_t)widget_count);
     buffer_u32(&buffer, (uint32_t)string_count);

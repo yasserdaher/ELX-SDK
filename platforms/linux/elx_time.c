@@ -9,7 +9,9 @@
  * See the LICENSE file for the applicable terms.
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include "elx_std_time.h"
 #include <time.h>
 #include <stdio.h>

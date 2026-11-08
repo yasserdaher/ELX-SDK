@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include "elx_update.h"
 
 static const char *g_target = "elvi";
 
@@ -58,6 +59,9 @@ static void print_help(void) {
     printf("  package remove <name>\n");
     printf("  package list\n");
     printf("  package search <query>\n");
+    printf("  update [--check] [--install] [--version <v>]\n");
+    printf("  upgrade (alias of update)\n");
+    printf("  self-update (alias of update)\n");
     printf("  diag <file> [--level error|warning|info]\n");
     printf("  fmt <file>\n");
     printf("  lint <file> [--strict]\n");
@@ -451,7 +455,7 @@ static int cmd_debug(int argc, char **argv) {
 }
 
 static int cmd_freeze_lock(int argc, char **argv) {
-    const char *version = "0.4.0-phase4";
+    const char *version = "0.4.1-phase4";
     for (int i = 2; i < argc; i++) {
         if (strcmp(argv[i], "--version") == 0 && i+1 < argc) {
             version = argv[++i];
@@ -525,7 +529,7 @@ static int cmd_rc(void) {
 static int cmd_stabilize(void) {
     elx_elx1_status_t *status = elx_elx1_status_new();
     elx_freeze_registry_t *reg = elx_freeze_registry_new();
-    elx_freeze_registry_lock(reg, "0.4.0-phase4");
+    elx_freeze_registry_lock(reg, "0.4.1-phase4");
     status->freeze_passed = true;
     status->compat_passed = true;
     status->diagnostics_passed = true;
@@ -539,7 +543,7 @@ static int cmd_stabilize(void) {
 static int cmd_release(void) {
     elx_elx1_status_t *status = elx_elx1_status_new();
     elx_freeze_registry_t *reg = elx_freeze_registry_new();
-    elx_freeze_registry_lock(reg, "0.4.0-phase4");
+    elx_freeze_registry_lock(reg, "0.4.1-phase4");
     status->freeze_passed = true;
     status->compat_passed = true;
     status->diagnostics_passed = true;
@@ -550,10 +554,65 @@ static int cmd_release(void) {
     return 0;
 }
 
+
+static int cmd_update(int argc, char **argv, int base) {
+    elx_update_options_t o; memset(&o,0,sizeof(o));
+    for (int i = base; i < argc; i++) {
+        if (strcmp(argv[i], "--check") == 0) o.check_only = true;
+        else if (strcmp(argv[i], "--install") == 0) o.install = true;
+        else if (strcmp(argv[i], "--version") == 0 && i+1 < argc) o.target_version = argv[++i];
+    }
+    elx_update_info_t info; memset(&info,0,sizeof(info));
+    printf("Current version: %s\n", elx_sdk_version());
+    elx_update_status_t st = elx_update_run(&o, &info);
+    if (st == ELX_UPDATE_ERR_API || st == ELX_UPDATE_ERR_NETWORK || st == ELX_UPDATE_ERR_RATE_LIMIT) {
+        fprintf(stderr, "Update check failed: %s\n", elx_update_status_string(st));
+        fprintf(stderr, "Hint: ensure network access, GitHub API reachable, and repo origin is official (or set ELX_UPDATE_REPO=owner/repo).\n");
+        return 1;
+    }
+    if (st == ELX_UPDATE_ERR_NOT_INSTALLED) {
+        fprintf(stderr, "Refusing update: %s\n", elx_update_status_string(st));
+        fprintf(stderr, "Install a release build to use the updater; do not run updater from source/build tree.\n");
+        return 1;
+    }
+    if (info.latest[0]) printf("Latest stable:   %s%s\n", info.latest, info.has_update?" (update available)":"");
+    if (info.release_url[0]) printf("Release: %s\n", info.release_url);
+    if (st == ELX_UPDATE_AVAILABLE || (o.check_only && info.has_update)) {
+        printf("A new version is available. Run: elx update --install\n");
+        return 0;
+    }
+    if (st == ELX_UPDATE_UP_TO_DATE) { printf("You are up to date.\n"); return 0; }
+    if (st == ELX_UPDATE_OK) { printf("Update installed successfully. New version: %s\n", info.latest[0]?info.latest:"(unknown)"); return 0; }
+    if (st == ELX_UPDATE_ERR_NO_CHECKSUM) {
+        fprintf(stderr, "Refusing automatic install: %s\n", elx_update_status_string(st));
+        if (info.asset_url[0]) fprintf(stderr, "Asset: %s\nManual verification required before install.\n", info.asset_url);
+        return 2;
+    }
+    if (st == ELX_UPDATE_ERR_CHECKSUM) { fprintf(stderr, "SECURITY: %s. Installation aborted; existing binary unchanged.\n", elx_update_status_string(st)); return 3; }
+    if (st == ELX_UPDATE_ERR_INSTALL) {
+        if (info.expected_sha256[0]) {
+            printf("Package verified (SHA-256 OK). Automatic archive install is not performed for safety.\n");
+            printf("Download/install the verified asset manually: %s\n", info.asset_url[0]?info.asset_url:"(see release)");
+        } else fprintf(stderr, "Installation failed: %s\n", elx_update_status_string(st));
+        return (info.expected_sha256[0])?0:1;
+    }
+    if (st == ELX_UPDATE_ERR_UNSUPPORTED_PLATFORM || st == ELX_UPDATE_ERR_NO_ASSET || st == ELX_UPDATE_ERR_NO_RELEASE) {
+        fprintf(stderr, "Update unavailable: %s\n", elx_update_status_string(st));
+        fprintf(stderr, "Supported release platforms are published as verified assets with SHA-256 checksums.\n");
+        return 1;
+    }
+    if (st != ELX_UPDATE_OK && st != ELX_UPDATE_UP_TO_DATE && st != ELX_UPDATE_AVAILABLE) {
+        fprintf(stderr, "Update failed: %s\n", elx_update_status_string(st));
+        return 1;
+    }
+        return 0;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) { print_help(); return 1; }
     if (strcmp(argv[1], "version") == 0 || strcmp(argv[1], "-v") == 0) return cmd_version();
     if (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0) return cmd_help();
+    if (strcmp(argv[1], "update") == 0 || strcmp(argv[1], "upgrade") == 0 || strcmp(argv[1], "self-update") == 0) return cmd_update(argc, argv, 2);
     if (strcmp(argv[1], "init") == 0) return cmd_init((argc >= 3) ? argv[2] : NULL);
     if (strcmp(argv[1], "doctor") == 0) return cmd_doctor();
     if (strcmp(argv[1], "build") == 0) {

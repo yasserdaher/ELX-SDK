@@ -461,6 +461,9 @@ bool elx_runtime_create(elx_runtime_t *runtime, const char *elbc_path) {
     runtime->module = (elx_module_t *)calloc(1U, sizeof(elx_module_t));
     if (!runtime->module) return false;
     if (!elx_module_load(elbc_path, runtime->module)) {
+        const char *err = elx_module_load_error();
+        fprintf(stderr, "elx_runtime: failed to load '%s': %s\n", elbc_path,
+                err ? err : "unknown error");
         free(runtime->module);
         runtime->module = NULL;
         return false;

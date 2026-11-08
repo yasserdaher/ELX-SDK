@@ -21,7 +21,7 @@
 extern "C" {
 #endif
 
-#define ELX_CORE_VERSION "0.4.0-phase4"
+#define ELX_CORE_VERSION "0.4.1-phase4"
 
 typedef enum {
     ELX_TARGET_UNKNOWN = 0,

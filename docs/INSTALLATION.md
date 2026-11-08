@@ -1,6 +1,6 @@
 # Installation Guide (Evidence-Based)
 
-**Version:** 0.4.0-phase4 (from `include/elx_config.h`).  
+**Version:** 0.4.1-phase4 (from `include/elx_config.h`).
 **Verified in this repo context:** Linux x64 build + `make test` passed. Other platforms: source/build files present but **not verified** here.
 
 ## Platform classification

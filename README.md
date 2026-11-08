@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.4.0--phase4-2E8EFF" />
+  <img alt="Version" src="https://img.shields.io/badge/version-0.4.1--phase4-2E8EFF" />
   <img alt="License" src="https://img.shields.io/badge/license-VOLT%201.26-7B61FF" />
   <img alt="Linux" src="https://img.shields.io/badge/Linux%20x64-VERIFIED-2ea44f" />
   <img alt="macOS" src="https://img.shields.io/badge/macOS-BUILD--COMPATIBLE-lightgrey" />
@@ -22,7 +22,7 @@
 ELX is an experimental programming language toolchain and SDK. This repository contains the public developer-facing SDK components: CLI, compiler integration, runtime/VM, ELBC bytecode tooling, standard library interfaces, native/security modules, diagnostics, formatting/linting/debugging utilities, module/package/spec tools, examples, and tests.
 
 - **Repository:** https://github.com/yasserdaher/ELX-SDK
-- **Version (source of truth):** `ELX_SDK_VERSION "0.4.0-phase4"` (`include/elx_config.h`)
+- **Version (source of truth):** `ELX_SDK_VERSION "0.4.1-phase4"` (`include/elx_config.h`)
 - **Status:** EXPERIMENTAL / early developer preview (evidence-based; see [DOCUMENTATION_AUDIT.md](DOCUMENTATION_AUDIT.md))
 
 ## Quick Start (Linux x64 — verified)
@@ -51,7 +51,7 @@ Prebuilt binaries are provided **only when verified**. Each system package is di
 
 | System | Status | Package |
 |---|---|---|
-| Linux x64 | VERIFIED (local build) | `dist/elx-sdk-0.4.0-phase4-linux-x64.zip` (when built) |
+| Linux x64 | VERIFIED (local build + isolated run) | `elx-sdk-0.4.1-phase4-linux-x64.zip` (current-source artifact) + `.sha256` |
 | Windows x64 | BUILD-COMPATIBLE (source present, not tested here) | Not yet available as verified binary |
 | macOS | BUILD-COMPATIBLE (source present, not tested here) | Not yet available as verified binary |
 | ARM64 variants | UNVERIFIED | Not yet available |

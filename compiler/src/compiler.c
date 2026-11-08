@@ -134,5 +134,5 @@ bool elx_compile_file(const char *input_path, const char *output_path, const elx
 }
 
 const char *elx_version(void) {
-    return "0.4.0-phase4";
+    return "0.4.1-phase4";
 }

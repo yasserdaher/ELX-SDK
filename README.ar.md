@@ -3,7 +3,7 @@
 ## هوية المشروع
 - **الاسم:** ELX — لغة برمجة ومجموعة أدوات تطوير (SDK)
 - **الناشر:** ELECTRON VISION (هوية مشروع؛ لا يُدّعى أنها كيان قانوني مسجّل)
-- **الإصدار:** 0.4.0-phase4 (`ELX_SDK_VERSION` في `include/elx_config.h`)
+- **الإصدار:** 0.4.1-phase4 (`ELX_SDK_VERSION` في `include/elx_config.h`)
 - **الحالة:** تجريبي / معاينة مبكرة للمطورين
 - **المستودع:** https://github.com/yasserdaher/ELX-SDK
 - **الترخيص:** اتفاقية VOLT 1.26 — راجع [LICENSE](LICENSE) و[LICENSE-ELX](LICENSE-ELX)

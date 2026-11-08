@@ -1,5 +1,5 @@
 CC ?= gcc
-CFLAGS ?= -std=c11 -Wall -Wextra -pedantic -DELX_SDK_VERSION=\"0.4.0-phase4\" -DELX_SDK_SECURITY_VERSION=\"0.1.0\"
+CFLAGS ?= -std=c11 -Wall -Wextra -pedantic -DELX_SDK_VERSION=\"0.4.1-phase4\" -DELX_SDK_SECURITY_VERSION=\"0.1.0\"
 CFLAGS += -Iinclude -Icompiler/include -Icompiler/src -Iruntime/include
 LDFLAGS ?=
 LDLIBS ?= -lm
@@ -8,7 +8,7 @@ BUILD_DIR := build
 SDK_BIN := $(BUILD_DIR)/elx
 SDK_LIB := $(BUILD_DIR)/libelx_sdk.a
 
-CORE_SRCS := core/elx_core.c core/elx_error_list.c core/elx_module.c core/elx_package.c core/elx_diagnostics.c core/elx_formatter.c core/elx_linter.c core/elx_debugger.c core/elx_spec_freeze.c core/elx_compat.c core/elx_elx1.c
+CORE_SRCS := core/elx_core.c core/elx_error_list.c core/elx_module.c core/elx_package.c core/elx_diagnostics.c core/elx_formatter.c core/elx_linter.c core/elx_debugger.c core/elx_spec_freeze.c core/elx_compat.c core/elx_elx1.c core/elx_update.c
 STD_SRCS := std/io.c std/fs.c std/process.c std/env.c std/str.c std/list.c std/map.c std/set.c std/math.c std/error.c std/net.c
 NATIVE_SRCS := native/elx_native.c
 SECURITY_SRCS := security/elx_security.c
@@ -44,7 +44,7 @@ TEST_SRCS := tests/test_std.c
 TEST_OBJS := $(TEST_SRCS:%.c=$(BUILD_DIR)/%.o)
 TEST_BIN := $(BUILD_DIR)/test_std
 
-.PHONY: all test test_std clean install
+.PHONY: all test test_std test_elbc clean install
 
 all: $(SDK_BIN)
 
@@ -61,7 +61,7 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test: $(SDK_BIN)
+test: $(SDK_BIN) test_elbc test_std
 	./$(SDK_BIN) version
 	./$(SDK_BIN) doctor
 	./$(SDK_BIN) init test_project
@@ -71,11 +71,23 @@ test: $(SDK_BIN)
 	rm -rf test_project
 	@echo "=== SDK integration tests passed ==="
 
+
+TEST_ELBC_SRCS := tests/test_elbc.c
+TEST_ELBC_OBJS := $(TEST_ELBC_SRCS:%.c=$(BUILD_DIR)/%.o)
+TEST_ELBC_BIN := $(BUILD_DIR)/test_elbc
+TEST_ELBC_LIBS := $(filter-out $(BUILD_DIR)/cli/elx.o,$(ALL_OBJS))
+
+test_elbc: $(TEST_ELBC_BIN)
+	./$(TEST_ELBC_BIN)
+
+$(TEST_ELBC_BIN): $(TEST_ELBC_OBJS) $(TEST_ELBC_LIBS) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(TEST_ELBC_OBJS) $(TEST_ELBC_LIBS) $(LDFLAGS) $(LDLIBS) -o $@
+
 test_std: $(TEST_BIN)
 	./$(TEST_BIN)
 
 $(TEST_BIN): $(TEST_OBJS) $(ALL_OBJS) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(TEST_OBJS) $(ALL_OBJS) $(LDFLAGS) $(LDLIBS) -o $@
+	$(CC) $(CFLAGS) $(TEST_OBJS) $(filter-out $(BUILD_DIR)/cli/elx.o,$(ALL_OBJS)) $(LDFLAGS) $(LDLIBS) -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)

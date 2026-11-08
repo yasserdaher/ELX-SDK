@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 #ifndef ELX_SDK_VERSION
-#define ELX_SDK_VERSION "0.4.0-phase4"
+#define ELX_SDK_VERSION "0.4.1-phase4"
 #endif
 #ifndef ELX_SDK_VERSION_MAJOR
 #define ELX_SDK_VERSION_MAJOR 1

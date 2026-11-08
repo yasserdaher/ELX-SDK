@@ -8,12 +8,13 @@
 ## Availability matrix
 | System | Arch | Status | Package (naming proposal / actual if present) | Link |
 |---|---|---|---|---|
-| Linux | x64 | VERIFIED (local build) | `dist/elx-sdk-0.4.0-phase4-linux-x64.zip` | Build from source (verified on Linux x64). No GitHub Release asset published in this repo commit; verify before download. |
-| Windows | x64 | BUILD-COMPATIBLE (not verified here) | `elx-sdk-0.4.0-phase4-windows-x64.zip` | **Not yet available** — [Releases](https://github.com/yasserdaher/ELX-SDK/releases) / [Installation](INSTALLATION.md) |
-| Windows | ARM64 | UNVERIFIED | `elx-sdk-0.4.0-phase4-windows-arm64.zip` | **Not yet available** |
-| macOS | Intel | BUILD-COMPATIBLE (not verified here) | `elx-sdk-0.4.0-phase4-macos-x64.zip` | **Not yet available** |
-| macOS | Apple Silicon | UNVERIFIED | `elx-sdk-0.4.0-phase4-macos-arm64.zip` | **Not yet available** |
-| Linux | ARM64 | UNVERIFIED | `elx-sdk-0.4.0-phase4-linux-arm64.zip` | **Not yet available** |
+| Linux | x64 | VERIFIED (current-source build, isolated run) | `elx-sdk-0.4.1-phase4-linux-x64.zip` + `.sha256` | Built from this source tree (0.4.1-phase4); verify SHA-256 before use. No GitHub Release asset assumed published by this audit. |
+
+| Windows | x64 | BUILD-COMPATIBLE (not verified here) | `elx-sdk-0.4.1-phase4-windows-x64.zip` | **Not yet available** — [Releases](https://github.com/yasserdaher/ELX-SDK/releases) / [Installation](INSTALLATION.md) |
+| Windows | ARM64 | UNVERIFIED | `elx-sdk-0.4.1-phase4-windows-arm64.zip` | **Not yet available** |
+| macOS | Intel | BUILD-COMPATIBLE (not verified here) | `elx-sdk-0.4.1-phase4-macos-x64.zip` | **Not yet available** |
+| macOS | Apple Silicon | UNVERIFIED | `elx-sdk-0.4.1-phase4-macos-arm64.zip` | **Not yet available** |
+| Linux | ARM64 | UNVERIFIED | `elx-sdk-0.4.1-phase4-linux-arm64.zip` | **Not yet available** |
 
 ## Release asset naming convention (proposal)
 `elx-sdk-<version>-<os>-<arch>.zip` — each `.zip` contains files for that specific system only.

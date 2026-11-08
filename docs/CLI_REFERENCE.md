@@ -1,10 +1,10 @@
 # CLI Reference (elx)
 
-Source of truth: `cli/elx.c` and `./build/elx help` (v0.4.0-phase4).
+Source of truth: `cli/elx.c` and `./build/elx help` (v0.4.1-phase4).
 
 ## Global
 ```text
-ELX SDK v0.4.0-phase4
+ELX SDK v0.4.1-phase4
 Commands:
   build <file.elx> [--target <t>] [-o <out>]
   run <file.elx> [--target <t>]
@@ -40,7 +40,7 @@ Commands:
 ## Verified commands (Linux x64)
 | Command | Example | Expected (observed) |
 |---|---|---|
-| `version` | `./build/elx version` | `elx 0.4.0-phase4 (core 0.4.0-phase4, sdk 0.4.0-phase4)` |
+| `version` | `./build/elx version` | `elx 0.4.1-phase4 (core 0.4.1-phase4, sdk 0.4.1-phase4)` |
 | `doctor` | `./build/elx doctor` | Prints environment; ends with `All checks passed!` on verified setup |
 | `init` | `./build/elx init demo` | Creates `demo/main.elx` + `demo/manifest.json` |
 | `build` | `./build/elx build demo/main.elx` | Compiles to `.elbc`; reports success |
