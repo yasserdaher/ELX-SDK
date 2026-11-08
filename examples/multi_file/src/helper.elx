@@ -1,0 +1,9 @@
+permissions {
+    sandbox: true,
+}
+
+import std.io
+
+fn helper() -> String {
+    return "from helper module"
+}

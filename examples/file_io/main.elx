@@ -1,0 +1,17 @@
+permissions {
+    sandbox: true,
+}
+
+import std.io
+import std.fs
+
+fn main() {
+    print("File I/O Test")
+    let content: String = "Hello from ELX file!"
+    std.fs.write_text("test.txt", content)
+    let read = std.fs.read_text("test.txt")
+    if read {
+        print(read)
+    }
+    std.fs.remove("test.txt")
+}

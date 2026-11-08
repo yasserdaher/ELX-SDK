@@ -1,0 +1,31 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.elbc
+*.dylib
+
+# Packages / distribution archives (keep dist/PACKAGING.md)
+dist/*.zip
+dist/*.sha256
+dist/*.tar.gz
+dist/*.tar.xz
+
+# Logs / temp / local env
+*.log
+*.tmp
+tmp/
+.temp/
+.env
+.env.*
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*~

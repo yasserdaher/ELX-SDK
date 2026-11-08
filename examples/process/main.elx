@@ -1,0 +1,26 @@
+permissions {
+    sandbox: true,
+}
+
+import std.io
+import std.process
+import std.env
+import std.time
+
+fn main() {
+    print("Process & Environment Test")
+    let pid = std.process.get_id()
+    print("PID: ")
+    print(pid)
+    let hostname = std.env.get_hostname()
+    if hostname {
+        print("Host: ")
+        print(hostname)
+    }
+    let now = std.time.now()
+    let time_str = std.time.to_iso8601(now)
+    if time_str {
+        print("Time: ")
+        print(time_str)
+    }
+}

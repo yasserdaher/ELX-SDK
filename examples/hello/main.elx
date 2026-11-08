@@ -1,0 +1,12 @@
+permissions {
+    sandbox: true,
+}
+
+import std.io
+import std.fs
+
+fn main() {
+    print("Hello from ELX!")
+    let greeting: String = "ELX Cross-Platform"
+    print(greeting)
+}

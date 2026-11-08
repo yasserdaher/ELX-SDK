@@ -1,0 +1,29 @@
+permissions {
+    sandbox: true,
+}
+
+import std.io
+import std.fs
+import std.process
+
+fn read_file(path: String) -> String {
+    let content = std.fs.read_text(path)
+    if content { return content }
+    return ""
+}
+
+fn write_file(path: String, content: String) {
+    std.fs.write_text(path, content)
+}
+
+fn main() {
+    print("Multi-file Project Test")
+    write_file("data.txt", "shared data")
+    let a = read_file("data.txt")
+    print("Module A read: ")
+    print(a)
+    let b = read_file("data.txt")
+    print("Module B read: ")
+    print(b)
+    std.fs.remove("data.txt")
+}
